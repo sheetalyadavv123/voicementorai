@@ -1,0 +1,33 @@
+// Prisma owns auth-related tables only (users), in their own Postgres
+// `auth` schema. All domain tables (conversations, messages, documents,
+// memory) live in `public` and are owned by the FastAPI backend via
+// SQLAlchemy/Alembic — see backend/database/models.py. Splitting by schema
+// (rather than sharing `public`) keeps each tool's migration history/drift
+// detection from tripping over tables the other tool created. Both sides
+// still reference `auth.users.id` as a plain UUID foreign key.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  schemas  = ["auth"]
+}
+
+model User {
+  id               String   @id @default(uuid()) @db.Uuid
+  name             String
+  email            String   @unique
+  passwordHash     String   @map("password_hash")
+  preferredLanguage String  @default("en") @map("preferred_language") // "en" | "hi" | "hinglish"
+  difficultyLevel  String   @default("beginner") @map("difficulty_level") // "beginner" | "intermediate" | "advanced"
+  voiceId          String?  @map("voice_id") // selected ElevenLabs voice
+  responseLength   String   @default("balanced") @map("response_length") // "concise" | "balanced" | "detailed"
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@map("users")
+  @@schema("auth")
+}
